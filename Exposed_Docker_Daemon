@@ -1,0 +1,31 @@
+docker sockets communicate data using IPC. these sockets use file permissions.\
+
+
+When interacting with the Docker Engine (i.e. running commands such as docker run), this will be done using a socket (usually, this is done using a Unix socket unless you execute the commands to a remote Docker host). Recall that Unix sockets use filesystem permissions. This is why you must be a member of the Docker group (or root!) to run Docker commands, as you will need the permissions to access the socket owned by Docker.
+
+find docker socket in a container
+ls -la /var/run | grep sock
+Note: This location can vary based on the operating system and can even be manually set by the developer at runtime of the container.
+
+First, let's confirm we can execute docker commands. You will either need to be root on the container or have the "docker" group permissions as a lower-privileged user. 
+
+
+We will use Docker to create a new container and mount the host's filesystem into this new container. Then we are going to access the new container and look at the host's filesystem.
+
+Our final command will look like this: docker run -v /:/mnt --rm -it alpine chroot /mnt sh, which does the following:
+
+1. We will need to upload a docker image. For this room, I have provided this on the VM. It is called "alpine". The "alpine" distribution is not a necessity, but it is extremely lightweight and will blend in a lot better. To avoid detection, it is best to use an image that is already present in the system, otherwise, you will have to upload this yourself.
+
+2. We will use docker run to start the new container and mount the host's file system (/) to (/mnt) in the new container: docker run -v /:/mnt 
+
+3. We will tell the container to run interactively (so that we can execute commands in the new container): -it
+
+4. Now, we will use the already provided alpine image: alpine
+
+5. We will use chroot to change the root directory of the container to be /mnt (where we are mounting the files from the host operating system): chroot /mnt
+
+6. Now, we will tell the container to run sh to gain a shell and execute commands in the container: sh
+
+-------
+
+You may need to "Ctrl + C" to cancel the exploit once or twice for this vulnerability to work, but, as you can see below, we have successfully mounted the host operating system's filesystem into the new alpine container.
