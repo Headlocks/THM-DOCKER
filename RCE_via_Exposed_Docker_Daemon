@@ -1,0 +1,26 @@
+TCP Sockets Edition
+
+Docker can be remotely administrated. For example, using management tools such as Portainer or Jenkins to deploy containers to test their code (yay, automation!).
+
+The Docker Engine will listen on a port when configured to be run remotely. The Docker Engine is easy to make remotely accessible but difficult to do securely. The vulnerability here is Docker is remotely accessible and allows anyone to execute commands. First, we will need to enumerate.
+
+Needs to have docker port open. shown from an NMAP scan.
+
+2375/tcp open docker Docker 20.10.20 (API 1.41)
+
+curl http://10.201.108.59:2375/version
+  confirm we can interact with exposed daemon
+
+For this, we'll need to tell our version of Docker to send the command to our target (not our own machine). We can add the "-H" switch to our target. To test if we can run commands, we'll list the containers on the target: docker -H tcp://10.201.108.59:2375 ps
+
+network ls
+Used to list the networks of containers, we could use this to discover other applications running and pivot to them from our machine!
+
+images
+List images used by containers; data can also be exfiltrated by reverse-engineering the image.
+
+exec
+Execute a command on a container.
+
+run
+Run a container.
